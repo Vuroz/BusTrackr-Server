@@ -1,8 +1,9 @@
 from bustrackr_server import app, db
 from bustrackr_server.models import Stop, Quay
+from bustrackr_server.utils import orjson_default
 from sqlalchemy import and_, or_, func, select
 from flask import request
-import json
+import orjson
 
 @app.route('/')
 def index():
@@ -73,4 +74,11 @@ def get_stops():
             }
         })
 
-    return json.dumps(json_response, ensure_ascii=False, separators=(',', ':')).encode('utf-8'), 200
+    return (
+        orjson.dumps(
+            json_response,
+            # option=orjson.OPT_INDENT_2,
+            default=orjson_default
+        ),
+        200
+    )

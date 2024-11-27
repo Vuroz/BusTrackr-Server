@@ -1,17 +1,18 @@
-from sqlalchemy.dialects.sqlite import INTEGER, TEXT, REAL
+from sqlalchemy.dialects.sqlite import TEXT, REAL
+from sqlalchemy.dialects.postgresql import BIGINT, INTEGER, SMALLINT, TIMESTAMP, TIME, CHAR, VARCHAR, NUMERIC, BOOLEAN
 from bustrackr_server import db
 
 class Authority(db.Model):
     '''Representation of an authority in the database'''
     __tablename__ = 'authority'
-    id = db.Column(INTEGER, name='id', primary_key=True)
-    from_datetime  = db.Column(TEXT   , name='from_datetime' , nullable=True )
-    to_datetime    = db.Column(TEXT   , name='to_datetime'   , nullable=True )
-    name           = db.Column(TEXT   , name='name'          , nullable=False)
-    name_legal     = db.Column(TEXT   , name='name_legal'    , nullable=False)
-    private_code   = db.Column(INTEGER, name='private_code'  , nullable=False)
-    company_number = db.Column(TEXT   , name='company_number', nullable=True )
-    type           = db.Column(TEXT   , name='type'          , nullable=False)
+    id = db.Column(BIGINT, name='id', primary_key=True)
+    from_datetime  = db.Column(TIMESTAMP  , name='from_datetime' , nullable=True )
+    to_datetime    = db.Column(TIMESTAMP  , name='to_datetime'   , nullable=True )
+    name           = db.Column(VARCHAR(64), name='name'          , nullable=True ) # Not all authorities have a name (for some reason?)
+    name_legal     = db.Column(VARCHAR(64), name='name_legal'    , nullable=True ) # Not all authorities have a legal name (for some reason?)
+    private_code   = db.Column(INTEGER    , name='private_code'  , nullable=True )
+    company_number = db.Column(VARCHAR(32), name='company_number', nullable=True )
+    type           = db.Column(VARCHAR(32), name='type'          , nullable=False)
         
     stops    = db.relationship('Stop',
                                primaryjoin='Authority.id == Stop.authority_id',
@@ -33,17 +34,17 @@ class Authority(db.Model):
 class VehicleType(db.Model):
     '''Representation of a vehicle type in the database'''
     __tablename__ = 'vehicle_type'
-    id = db.Column(INTEGER, name='id', primary_key=True)
-    type                = db.Column(TEXT   , name='type'               , nullable=False)
-    manufacturer        = db.Column(TEXT   , name='manufacturer'       , nullable=True ) # Not all vehicles have a manufacturer (for some reason?)
-    model_year          = db.Column(INTEGER, name='model_year'         , nullable=True ) # I think all vehicles have a model year, but leave it as nullable just in case
-    fuel_type           = db.Column(TEXT   , name='fuel_type'          , nullable=True ) # Not all vehicles have a fuel type (for some reason?)
-    capacity_seated     = db.Column(INTEGER, name='capacity_seated'    , nullable=False)
-    capacity_standing   = db.Column(INTEGER, name='capacity_standing'  , nullable=False)
-    capacity_pushchair  = db.Column(INTEGER, name='capacity_pushchair' , nullable=False)
-    capacity_wheelchair = db.Column(INTEGER, name='capacity_wheelchair', nullable=False)
-    low_floor           = db.Column(INTEGER, name='low_floor'          , nullable=False)
-    lift_or_ramp        = db.Column(INTEGER, name='lift_or_ramp'       , nullable=False)
+    id = db.Column(BIGINT, name='id', primary_key=True)
+    type                = db.Column(VARCHAR(16), name='type'               , nullable=False)
+    manufacturer        = db.Column(VARCHAR(32), name='manufacturer'       , nullable=True ) # Not all vehicles have a manufacturer (for some reason?)
+    model_year          = db.Column(SMALLINT   , name='model_year'         , nullable=True ) # I think all vehicles have a model year, but leave it as nullable just in case
+    fuel_type           = db.Column(VARCHAR(16), name='fuel_type'          , nullable=True ) # Not all vehicles have a fuel type (for some reason?)
+    capacity_seated     = db.Column(SMALLINT   , name='capacity_seated'    , nullable=False)
+    capacity_standing   = db.Column(SMALLINT   , name='capacity_standing'  , nullable=False)
+    capacity_pushchair  = db.Column(SMALLINT   , name='capacity_pushchair' , nullable=False)
+    capacity_wheelchair = db.Column(SMALLINT   , name='capacity_wheelchair', nullable=False)
+    low_floor           = db.Column(SMALLINT   , name='low_floor'          , nullable=False)
+    lift_or_ramp        = db.Column(SMALLINT   , name='lift_or_ramp'       , nullable=False)
     
     vehicles = db.relationship('Vehicle',
                                primaryjoin='Vehicle.vehicle_type_id == VehicleType.id',
@@ -52,12 +53,12 @@ class VehicleType(db.Model):
     
 class Vehicle(db.Model):
     __tablename__ = 'vehicle'
-    id = db.Column(INTEGER, name='id', primary_key=True)
-    vehicle_type_id = db.Column(INTEGER, db.ForeignKey('vehicle_type.id'), name='vehicle_type_id', nullable=False)
-    operator_id     = db.Column(INTEGER, db.ForeignKey('authority.id'   ), name='operator_id'    , nullable=False)
-    from_datetime      = db.Column(TEXT   , name='from_datetime'     , nullable=True )
-    to_datetime        = db.Column(TEXT   , name='to_datetime'       , nullable=True )
-    operational_number = db.Column(INTEGER, name='operational_number', nullable=False)
+    id = db.Column(BIGINT, name='id', primary_key=True)
+    vehicle_type_id = db.Column(BIGINT, db.ForeignKey('vehicle_type.id'), name='vehicle_type_id', nullable=False)
+    operator_id     = db.Column(BIGINT, db.ForeignKey('authority.id'   ), name='operator_id'    , nullable=False)
+    from_datetime      = db.Column(TIMESTAMP, name='from_datetime'     , nullable=True )
+    to_datetime        = db.Column(TIMESTAMP, name='to_datetime'       , nullable=True )
+    operational_number = db.Column(INTEGER  , name='operational_number', nullable=False)
     
     vehicle_type = db.relationship('VehicleType',
                                    primaryjoin='Vehicle.vehicle_type_id == VehicleType.id',
@@ -70,7 +71,7 @@ class Vehicle(db.Model):
 
 class ScheduledStopPoint(db.Model):
     __tablename__ = 'scheduled_stop_point'
-    id = db.Column(INTEGER, name='id', primary_key=True)
+    id = db.Column(BIGINT, name='id', primary_key=True)
 
     passenger_stop              = db.relationship('PassengerStop',
                                                   primaryjoin='ScheduledStopPoint.id == PassengerStop.scheduled_stop_point_id',
@@ -92,10 +93,10 @@ class ScheduledStopPoint(db.Model):
 class DestinationDisplay(db.Model):
     __tablename__ = 'destination_display'
     id_db = db.Column(INTEGER, name='id_db', primary_key=True, autoincrement=True)
-    id  = db.Column(INTEGER,                                          name='id' , nullable=True)
-    via = db.Column(INTEGER, db.ForeignKey('destination_display.id'), name='via', nullable=True)
-    front_text  = db.Column(TEXT, name='front_text' , nullable=False)
-    public_code = db.Column(TEXT, name='public_code', nullable=False)
+    id  = db.Column(BIGINT,                                          name='id' , nullable=True, unique=True)
+    via = db.Column(BIGINT, db.ForeignKey('destination_display.id'), name='via', nullable=True)
+    front_text  = db.Column(VARCHAR(64), name='front_text' , nullable=True )
+    public_code = db.Column(VARCHAR(16), name='public_code', nullable=True)
 
     journey_pattern_stop_points = db.relationship('JourneyPatternStopPoint',
                                                   primaryjoin='DestinationDisplay.id == JourneyPatternStopPoint.destination_display_id',
@@ -104,9 +105,9 @@ class DestinationDisplay(db.Model):
 
 class PassengerStop(db.Model):
     __tablename__ = 'passenger_stop'
-    id = db.Column(INTEGER, name='id', primary_key=True)
-    scheduled_stop_point_id = db.Column(INTEGER, db.ForeignKey('scheduled_stop_point.id'), name='scheduled_stop_point_id', nullable=False)
-    quay_id                 = db.Column(INTEGER, db.ForeignKey('quay.id'                ), name='quay_id'                , nullable=False)
+    id = db.Column(BIGINT, name='id', primary_key=True)
+    scheduled_stop_point_id = db.Column(BIGINT, db.ForeignKey('scheduled_stop_point.id'), name='scheduled_stop_point_id', nullable=False)
+    quay_id                 = db.Column(BIGINT, db.ForeignKey('quay.id'                ), name='quay_id'                , nullable=False)
 
     scheduled_stop_point = db.relationship('ScheduledStopPoint',
                                            primaryjoin='PassengerStop.scheduled_stop_point_id == ScheduledStopPoint.id',
@@ -119,12 +120,20 @@ class PassengerStop(db.Model):
 
 class Coordinate(db.Model):
     __tablename__ = 'coordinate'
-    id = db.Column(INTEGER, name='id', primary_key=True, autoincrement=True)
-    service_link_id_0 = db.Column(INTEGER, db.ForeignKey('service_link.id_0'), name='service_link_id_0', nullable=False)
-    service_link_id_1 = db.Column(INTEGER, db.ForeignKey('service_link.id_1'), name='service_link_id_1', nullable=False)
-    number    = db.Column(INTEGER, name='number'   , nullable=False)
-    latitude  = db.Column(REAL   , name='latitude' , nullable=False)
-    longitude = db.Column(REAL   , name='longitude', nullable=False)
+    id = db.Column(BIGINT, name='id', primary_key=True, autoincrement=True)
+    service_link_id_0 = db.Column(BIGINT, name='service_link_id_0', nullable=False)
+    service_link_id_1 = db.Column(BIGINT, name='service_link_id_1', nullable=False)
+    number    = db.Column(SMALLINT    , name='number'   , nullable=False)
+    latitude  = db.Column(NUMERIC(8,6), name='latitude' , nullable=False) # 8 digits, 6 decimal places, we only work with swedish coordinates
+    longitude = db.Column(NUMERIC(8,6), name='longitude', nullable=False) # 8 digits, 6 decimal places, we only work with swedish coordinates
+
+    # Composite foreign key referencing both columns (id_0, id_1) in service_link
+    __table_args__ = (
+        db.ForeignKeyConstraint(
+            ['service_link_id_0', 'service_link_id_1'],
+            ['service_link.id_0', 'service_link.id_1']
+        ),
+    )
 
     # Service link is a composite primary key, so we need to use SQLAlchemy's and_
     service_links = db.relationship('ServiceLink',
@@ -133,14 +142,14 @@ class Coordinate(db.Model):
 
 class ServiceLink(db.Model):
     __tablename__ = 'service_link'
-    id_0 = db.Column(INTEGER, name='id_0', primary_key=True)
-    id_1 = db.Column(INTEGER, name='id_1', primary_key=True)
-    point_from_id = db.Column(INTEGER, db.ForeignKey('scheduled_stop_point.id'),name='point_from_id', nullable=False)
-    point_to_id   = db.Column(INTEGER, db.ForeignKey('scheduled_stop_point.id'),name='point_to_id'  , nullable=False)
-    from_datetime  = db.Column(TEXT   , name='from_datetime' , nullable=True )
-    to_datetime    = db.Column(TEXT   , name='to_datetime'   , nullable=True )
-    distance       = db.Column(INTEGER, name='distance'      , nullable=False)
-    transport_mode = db.Column(TEXT   , name='transport_mode', nullable=False)
+    id_0 = db.Column(BIGINT, name='id_0', primary_key=True)
+    id_1 = db.Column(BIGINT, name='id_1', primary_key=True)
+    point_from_id = db.Column(BIGINT, db.ForeignKey('scheduled_stop_point.id'),name='point_from_id', nullable=False)
+    point_to_id   = db.Column(BIGINT, db.ForeignKey('scheduled_stop_point.id'),name='point_to_id'  , nullable=False)
+    from_datetime  = db.Column(TIMESTAMP  , name='from_datetime' , nullable=True )
+    to_datetime    = db.Column(TIMESTAMP  , name='to_datetime'   , nullable=True )
+    distance       = db.Column(INTEGER    , name='distance'      , nullable=False)
+    transport_mode = db.Column(VARCHAR(16), name='transport_mode', nullable=False)
 
     point_from = db.relationship('ScheduledStopPoint',
                                  primaryjoin='ServiceLink.point_from_id == ScheduledStopPoint.id',
@@ -153,20 +162,20 @@ class ServiceLink(db.Model):
 
 class DayType(db.Model):
     __tablename__ = 'day_type'
-    id   = db.Column(TEXT, name='id', primary_key=True)
-    days = db.Column(INTEGER, name='days', nullable=False) # Each day is stored in a bit, Monday is bit 0, Tuesday is bit 1, Wednesday is bit 2, etc.
+    id   = db.Column(CHAR(32), name='id', primary_key=True)
+    days = db.Column(SMALLINT, name='days', nullable=False) # Each day is stored in a bit, Monday is bit 0, Tuesday is bit 1, Wednesday is bit 2, etc.
 
 class OperatingPeriod(db.Model):
     __tablename__ = 'operating_period'
-    id = db.Column(INTEGER, name='id', primary_key=True)
-    from_datetime = db.Column(TEXT, name='from_datetime', nullable=False)
-    to_datetime   = db.Column(TEXT, name='to_datetime'  , nullable=False)
+    id = db.Column(BIGINT, name='id', primary_key=True)
+    from_datetime = db.Column(TIMESTAMP, name='from_datetime', nullable=False)
+    to_datetime   = db.Column(TIMESTAMP, name='to_datetime'  , nullable=False)
 
 class Network(db.Model):
     __tablename__ = 'network'
-    id = db.Column(INTEGER, name='id', primary_key=True)
-    authority_id = db.Column(INTEGER, db.ForeignKey('authority.id'), name='authority_id', nullable=False)
-    name = db.Column(TEXT, name='name', nullable=False)
+    id = db.Column(BIGINT, name='id', primary_key=True)
+    authority_id = db.Column(BIGINT, db.ForeignKey('authority.id'), name='authority_id', nullable=False)
+    name = db.Column(VARCHAR(64), name='name', nullable=False)
 
     authority = db.relationship('Authority',
                                 primaryjoin='Network.authority_id == Authority.id',
@@ -179,14 +188,14 @@ class Network(db.Model):
 
 class Line(db.Model):
     __tablename__ = 'line'
-    id = db.Column(INTEGER, name='id', primary_key=True)
-    network_id = db.Column(INTEGER, db.ForeignKey('network.id'), name='network_id', nullable=False)
-    from_datetime  = db.Column(TEXT   , name='from_datetime' , nullable=True )
-    to_datetime    = db.Column(TEXT   , name='to_datetime'   , nullable=True )
-    name           = db.Column(TEXT   , name='name'          , nullable=False)
-    public_code    = db.Column(TEXT   , name='public_code'   , nullable=False)
-    private_code   = db.Column(INTEGER, name='private_code'  , nullable=False)
-    transport_mode = db.Column(TEXT   , name='transport_mode', nullable=False)
+    id = db.Column(BIGINT, name='id', primary_key=True)
+    network_id = db.Column(BIGINT, db.ForeignKey('network.id'), name='network_id', nullable=False)
+    from_datetime  = db.Column(TIMESTAMP  , name='from_datetime' , nullable=True )
+    to_datetime    = db.Column(TIMESTAMP  , name='to_datetime'   , nullable=True )
+    name           = db.Column(VARCHAR(64), name='name'          , nullable=False)
+    public_code    = db.Column(VARCHAR(16), name='public_code'   , nullable=True )
+    private_code   = db.Column(INTEGER    , name='private_code'  , nullable=False)
+    transport_mode = db.Column(VARCHAR(16), name='transport_mode', nullable=False)
 
     network = db.relationship('Network',
                               primaryjoin='Line.network_id == Network.id',
@@ -196,10 +205,10 @@ class Line(db.Model):
 
 class Route(db.Model):
     __tablename__ = 'route'
-    id = db.Column(INTEGER, name='id', primary_key=True)
-    line_id = db.Column(INTEGER, db.ForeignKey('line.id'), name='line_id', nullable=False)
-    name      = db.Column(TEXT, name='name'     , nullable=False)
-    direction = db.Column(TEXT, name='direction', nullable=False)
+    id = db.Column(BIGINT, name='id', primary_key=True)
+    line_id = db.Column(BIGINT, db.ForeignKey('line.id'), name='line_id', nullable=False)
+    name      = db.Column(VARCHAR(64), name='name'     , nullable=False)
+    direction = db.Column(VARCHAR(8), name='direction', nullable=False) # Will only ever be 'inbound' or 'outbound' (perhaps convert to boolean?)
 
     journey_patterns = db.relationship('JourneyPattern',
                                        primaryjoin='Route.id == JourneyPattern.route_id',
@@ -208,10 +217,10 @@ class Route(db.Model):
 
 class PointOnRoute(db.Model):
     __tablename__ = 'point_on_route'
-    id = db.Column(INTEGER, name='id', primary_key=True)
-    route_id                = db.Column(INTEGER, db.ForeignKey('route.id'               ), name='route_id'               , nullable=False)
-    scheduled_stop_point_id = db.Column(INTEGER, db.ForeignKey('scheduled_stop_point.id'), name='scheduled_stop_point_id', nullable=False)
-    order = db.Column(INTEGER, name='order', nullable=False)
+    id = db.Column(BIGINT, name='id', primary_key=True)
+    route_id                = db.Column(BIGINT, db.ForeignKey('route.id'               ), name='route_id'               , nullable=False)
+    scheduled_stop_point_id = db.Column(BIGINT, db.ForeignKey('scheduled_stop_point.id'), name='scheduled_stop_point_id', nullable=False)
+    order = db.Column(SMALLINT, name='order', nullable=False)
 
     journey_pattern_stop_points = db.relationship('JourneyPatternStopPoint',
                                                   primaryjoin='PointOnRoute.id == JourneyPatternStopPoint.point_on_route_id',
@@ -220,8 +229,8 @@ class PointOnRoute(db.Model):
     
 class JourneyPattern(db.Model):
     __tablename__ = 'journey_pattern'
-    id = db.Column(INTEGER, name='id', primary_key=True)
-    route_id = db.Column(INTEGER, db.ForeignKey('route.id'), name='route_id', nullable=False)
+    id = db.Column(BIGINT, name='id', primary_key=True)
+    route_id = db.Column(BIGINT, db.ForeignKey('route.id'), name='route_id', nullable=False)
 
     journeys                     = db.relationship('Journey',
                                                   primaryjoin='JourneyPattern.id == Journey.journey_pattern_id',
@@ -238,14 +247,14 @@ class JourneyPattern(db.Model):
 
 class JourneyPatternStopPoint(db.Model):
     __tablename__ = 'journey_pattern_stop_point'
-    journey_pattern_id = db.Column(INTEGER, db.ForeignKey('journey_pattern.id'), name='journey_pattern_id', nullable=False, primary_key=True)
-    point_on_route_id  = db.Column(INTEGER, db.ForeignKey('point_on_route.id' ), name='point_on_route_id' , nullable=False, primary_key=True)
-    scheduled_stop_point_id = db.Column(INTEGER, db.ForeignKey('scheduled_stop_point.id'), name='scheduled_stop_point_id', nullable=False)
-    destination_display_id  = db.Column(INTEGER, db.ForeignKey('destination_display.id' ), name='destination_display_id' , nullable=True )    
-    alighting    = db.Column(INTEGER, name='alighting'   , nullable=False)
-    boarding     = db.Column(INTEGER, name='boarding'    , nullable=False)
-    request_stop = db.Column(INTEGER, name='request_stop', nullable=False)
-    order        = db.Column(INTEGER, name='order'       , nullable=False)
+    journey_pattern_id = db.Column(BIGINT, db.ForeignKey('journey_pattern.id'), name='journey_pattern_id', nullable=False, primary_key=True)
+    point_on_route_id  = db.Column(BIGINT, db.ForeignKey('point_on_route.id' ), name='point_on_route_id' , nullable=False, primary_key=True)
+    scheduled_stop_point_id = db.Column(BIGINT, db.ForeignKey('scheduled_stop_point.id'), name='scheduled_stop_point_id', nullable=False)
+    destination_display_id  = db.Column(BIGINT, db.ForeignKey('destination_display.id' ), name='destination_display_id' , nullable=True )    
+    alighting    = db.Column(BOOLEAN , name='alighting'   , nullable=False)
+    boarding     = db.Column(BOOLEAN , name='boarding'    , nullable=False)
+    request_stop = db.Column(BOOLEAN , name='request_stop', nullable=False)
+    order        = db.Column(SMALLINT, name='order'       , nullable=False)
 
     journey_pattern      = db.relationship('JourneyPattern',
                                            primaryjoin='JourneyPatternStopPoint.journey_pattern_id == JourneyPattern.id',
@@ -266,18 +275,25 @@ class JourneyPatternStopPoint(db.Model):
     
 class JourneyPatternServiceLink(db.Model):
     __tablename__ = 'journey_pattern_service_link'
-    id = db.Column(TEXT, name='id', nullable=False, primary_key=True)
-    service_link_id_0 = db.Column(INTEGER, db.ForeignKey('service_link.id_0'), name='service_link_id_0', nullable=False)
-    service_link_id_1 = db.Column(INTEGER, db.ForeignKey('service_link.id_1'), name='service_link_id_1', nullable=False)
-    order = db.Column(INTEGER, name='order', nullable=False)
+    id = db.Column(VARCHAR(16), name='id', nullable=False, primary_key=True)
+    service_link_id_0 = db.Column(BIGINT, name='service_link_id_0', nullable=False)
+    service_link_id_1 = db.Column(BIGINT, name='service_link_id_1', nullable=False)
+    order = db.Column(SMALLINT, name='order', nullable=False)
+
+    __table_args__ = (
+        db.ForeignKeyConstraint(
+            ['service_link_id_0', 'service_link_id_1'],
+            ['service_link.id_0', 'service_link.id_1']
+        ),
+    )
 
 class Journey(db.Model):
     __tablename__ = 'journey'
-    id = db.Column(INTEGER, name='id', primary_key=True)
-    journey_pattern_id = db.Column(INTEGER, db.ForeignKey('journey_pattern.id'), name='journey_pattern_id', nullable=False)
-    operator_id        = db.Column(INTEGER, db.ForeignKey('authority.id'      ), name='operator_id'       , nullable=False)
-    day_type_id        = db.Column(TEXT   , db.ForeignKey('day_type.id'       ), name='day_type_id'       , nullable=False)
-    transport_mode = db.Column(TEXT, name='transport_mode', nullable=False)
+    id = db.Column(BIGINT, name='id', primary_key=True)
+    journey_pattern_id = db.Column(BIGINT  , db.ForeignKey('journey_pattern.id'), name='journey_pattern_id', nullable=False)
+    operator_id        = db.Column(BIGINT  , db.ForeignKey('authority.id'      ), name='operator_id'       , nullable=False)
+    day_type_id        = db.Column(CHAR(32), db.ForeignKey('day_type.id'       ), name='day_type_id'       , nullable=False)
+    transport_mode = db.Column(VARCHAR(16), name='transport_mode', nullable=False)
 
     journey_pattern = db.relationship('JourneyPattern',
                                       primaryjoin='Journey.journey_pattern_id == JourneyPattern.id',
@@ -290,25 +306,32 @@ class Journey(db.Model):
 
 class JourneyTime(db.Model):
     __tablename__ = 'journey_time'
-    id = db.Column(INTEGER, name='id', primary_key=True)
-    journey_id = db.Column(INTEGER, db.ForeignKey('journey.id'), name='journey_id', nullable=False)
-    jpsp_journey_pattern_id = db.Column(INTEGER, db.ForeignKey('journey_pattern_stop_point.journey_pattern_id'), name='jpsp_journey_pattern_id', nullable=False)
-    jpsp_point_on_route_id  = db.Column(INTEGER, db.ForeignKey('journey_pattern_stop_point.point_on_route_id' ), name='jpsp_point_on_route_id' , nullable=False)
-    arrival_time   = db.Column(TEXT, name='arrival_time'  , nullable=True)
-    departure_time = db.Column(TEXT, name='departure_time', nullable=True)
+    id = db.Column(BIGINT, name='id', primary_key=True)
+    journey_id = db.Column(BIGINT, db.ForeignKey('journey.id'), name='journey_id', nullable=False)
+    jpsp_journey_pattern_id = db.Column(BIGINT, name='jpsp_journey_pattern_id', nullable=False)
+    jpsp_point_on_route_id  = db.Column(BIGINT, name='jpsp_point_on_route_id' , nullable=False)
+    arrival_time   = db.Column(TIME, name='arrival_time'  , nullable=True)
+    departure_time = db.Column(TIME, name='departure_time', nullable=True)
+
+    __table_args__ = (
+        db.ForeignKeyConstraint(
+            ['jpsp_journey_pattern_id',                       'jpsp_point_on_route_id'],
+            ['journey_pattern_stop_point.journey_pattern_id', 'journey_pattern_stop_point.point_on_route_id']
+        ),
+    )
 
 class StopGroup(db.Model):
     '''Representation oof a stop group in the database 
     (multiple stops may share a common place name)'''
     __tablename__ = 'stop_group'
-    id = db.Column(INTEGER, name='id', primary_key=True)
-    latitude      = db.Column(REAL   , name='latitude'     , nullable=True )
-    longitude     = db.Column(REAL   , name='longitude'    , nullable=True )
-    from_datetime = db.Column(TEXT   , name='from_datetime', nullable=True )
-    to_datetime   = db.Column(TEXT   , name='to_datetime'  , nullable=True )
-    name          = db.Column(TEXT   , name='name'         , nullable=False)
-    description   = db.Column(TEXT   , name='description'  , nullable=True )
-    private_code  = db.Column(INTEGER, name='private_code' , nullable=False)
+    id = db.Column(BIGINT, name='id', primary_key=True)
+    latitude      = db.Column(NUMERIC(8,6), name='latitude'     , nullable=True ) # 8 digits, 6 decimal places, we only work with swedish coordinates
+    longitude     = db.Column(NUMERIC(8,6), name='longitude'    , nullable=True ) # 8 digits, 6 decimal places, we only work with swedish coordinates
+    from_datetime = db.Column(TIMESTAMP   , name='from_datetime', nullable=True )
+    to_datetime   = db.Column(TIMESTAMP   , name='to_datetime'  , nullable=True )
+    name          = db.Column(VARCHAR(48) , name='name'         , nullable=False)
+    description   = db.Column(VARCHAR(32) , name='description'  , nullable=True )
+    private_code  = db.Column(INTEGER     , name='private_code' , nullable=False)
     
     stops = db.relationship('Stop',
                             primaryjoin='StopGroup.id == Stop.stop_group_id',
@@ -318,18 +341,18 @@ class StopGroup(db.Model):
 class Stop(db.Model):
     '''Representation of a stop, these are the actual bus stops/cabins'''
     __tablename__ = 'stop'
-    id = db.Column(INTEGER, name='id', primary_key=True)
-    stop_group_id = db.Column(INTEGER, db.ForeignKey('stop_group.id'), name='stop_group_id', nullable=True )
-    authority_id  = db.Column(INTEGER, db.ForeignKey('authority.id' ), name='authority_id' , nullable=False)
-    latitude       = db.Column(REAL   , name='latitude'      , nullable=False)
-    longitude      = db.Column(REAL   , name='longitude'     , nullable=False)
-    from_datetime  = db.Column(TEXT   , name='from_datetime' , nullable=True )
-    to_datetime    = db.Column(TEXT   , name='to_datetime'   , nullable=True )
-    name           = db.Column(TEXT   , name='name'          , nullable=False)
-    name_short     = db.Column(TEXT   , name='name_short'    , nullable=True )
-    private_code   = db.Column(INTEGER, name='private_code'  , nullable=True )
-    transport_mode = db.Column(TEXT   , name='transport_mode', nullable=False)
-    type           = db.Column(TEXT   , name='type'          , nullable=False)
+    id = db.Column(BIGINT, name='id', primary_key=True)
+    stop_group_id = db.Column(BIGINT, db.ForeignKey('stop_group.id'), name='stop_group_id', nullable=True )
+    authority_id  = db.Column(BIGINT, db.ForeignKey('authority.id' ), name='authority_id' , nullable=False)
+    latitude       = db.Column(NUMERIC(15,13), name='latitude'      , nullable=False)
+    longitude      = db.Column(NUMERIC(15,13), name='longitude'     , nullable=False)
+    from_datetime  = db.Column(TIMESTAMP     , name='from_datetime' , nullable=True )
+    to_datetime    = db.Column(TIMESTAMP     , name='to_datetime'   , nullable=True )
+    name           = db.Column(VARCHAR(64)   , name='name'          , nullable=False)
+    name_short     = db.Column(VARCHAR(16)   , name='name_short'    , nullable=True )
+    private_code   = db.Column(INTEGER       , name='private_code'  , nullable=True )
+    transport_mode = db.Column(VARCHAR(16)   , name='transport_mode', nullable=False)
+    type           = db.Column(VARCHAR(16)   , name='type'          , nullable=False)
     
     authority         = db.relationship('Authority',
                                         primaryjoin='Stop.authority_id == Authority.id',
@@ -351,7 +374,7 @@ class Stop(db.Model):
 class AlternativeName(db.Model):
     __tablename__ = 'stop_alternative_name'
     id = db.Column(INTEGER, name='id', primary_key=True, autoincrement=True)
-    stop_id = db.Column(INTEGER, db.ForeignKey('stop.id'), name='stop_id', nullable=False) 
+    stop_id = db.Column(BIGINT, db.ForeignKey('stop.id'), name='stop_id', nullable=False) 
     name         = db.Column(TEXT, name='name'        , nullable=False)
     abbreviation = db.Column(TEXT, name='abbreviation', nullable=False)
     
@@ -362,14 +385,14 @@ class AlternativeName(db.Model):
 
 class Quay(db.Model):
     __tablename__ = 'quay'
-    id = db.Column(INTEGER, name='id', primary_key=True)
-    stop_id = db.Column(INTEGER, db.ForeignKey('stop.id'), name='stop_id', nullable=False)
-    latitude      = db.Column(REAL   , name='latitude'     , nullable=False)
-    longitude     = db.Column(REAL   , name='longitude'    , nullable=False)
-    from_datetime = db.Column(TEXT   , name='from_datetime', nullable=True )
-    to_datetime   = db.Column(TEXT   , name='to_datetime'  , nullable=True )
-    private_code  = db.Column(INTEGER, name='private_code' , nullable=True )
-    public_code   = db.Column(TEXT   , name='public_code'  , nullable=True )
+    id = db.Column(BIGINT, name='id', primary_key=True)
+    stop_id = db.Column(BIGINT, db.ForeignKey('stop.id'), name='stop_id', nullable=False)
+    latitude      = db.Column(NUMERIC(15,13), name='latitude'     , nullable=False)
+    longitude     = db.Column(NUMERIC(15,13), name='longitude'    , nullable=False)
+    from_datetime = db.Column(TIMESTAMP     , name='from_datetime', nullable=True )
+    to_datetime   = db.Column(TIMESTAMP     , name='to_datetime'  , nullable=True )
+    private_code  = db.Column(INTEGER       , name='private_code' , nullable=True )
+    public_code   = db.Column(VARCHAR(8)    , name='public_code'  , nullable=True )
 
     stop            = db.relationship('Stop',
                                       primaryjoin='Quay.stop_id == Stop.id',

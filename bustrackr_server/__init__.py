@@ -13,6 +13,7 @@ import os
 def fix_database():
     with app.app_context():
         db.create_all() # Create all the tables
+        db.session.commit()
         # process_static_data()
 
 from bustrackr_server import routes
