@@ -1,8 +1,18 @@
-# Secrets
+### Secrets ###
 .env
+static_data
 
-# Python venv
+### This file needs to be refactored before it can be pushed ###
+bustrackr_server/data_parser.py
+
+### Python venv ###
 .venv
+
+### Flask ###
+instance/*
+!instance/.gitignore
+.webassets-cache
+.env
 
 ### Flask.Python Stack ###
 # Byte-compiled / optimized / DLL files
