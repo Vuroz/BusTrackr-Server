@@ -1,4 +1,3 @@
-from sqlalchemy.dialects.sqlite import TEXT, REAL
 from sqlalchemy.dialects.postgresql import BIGINT, INTEGER, SMALLINT, TIMESTAMP, TIME, CHAR, VARCHAR, NUMERIC, BOOLEAN
 from bustrackr_server import db
 
