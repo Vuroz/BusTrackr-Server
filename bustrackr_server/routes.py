@@ -12,7 +12,10 @@ def index():
 @app.route('/api/stops', methods=['POST'])
 def get_stops():
     '''Handler for the `/api/stops` route'''
-    req = request.get_json()
+    try:
+        req = request.get_json()
+    except:
+        return 'Invalid JSON', 400
     if req is None:
         return 'Invalid JSON', 400
     if 'lat_0' not in req or 'lon_0' not in req or 'lat_1' not in req or 'lon_1' not in req:
