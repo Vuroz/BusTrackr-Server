@@ -20,5 +20,5 @@ database_port = get_env_value('DATABASE_PORT')
 database_database = get_env_value('DATABASE_DATABASE')
 
 class Config:
-    SECRET_KEY = dev_env_file['FLASK_SECRET']
+    SECRET_KEY = get_env_value('FLASK_SECRET')
     SQLALCHEMY_DATABASE_URI = f'postgresql+psycopg://{database_user}:{database_pass}@{database_host}:{database_port}/{database_database}'
