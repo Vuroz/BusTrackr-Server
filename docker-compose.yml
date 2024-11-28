@@ -6,3 +6,4 @@ services:
     restart: always
     environment:
       - FLASK_ENV=production
+      - FLASK_ENV_PATH=/etc/bustrackr-backend/.env
