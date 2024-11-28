@@ -374,8 +374,8 @@ class AlternativeName(db.Model):
     __tablename__ = 'stop_alternative_name'
     id = db.Column(INTEGER, name='id', primary_key=True, autoincrement=True)
     stop_id = db.Column(BIGINT, db.ForeignKey('stop.id'), name='stop_id', nullable=False) 
-    name         = db.Column(TEXT, name='name'        , nullable=False)
-    abbreviation = db.Column(TEXT, name='abbreviation', nullable=False)
+    name         = db.Column(VARCHAR(64), name='name'        , nullable=False)
+    abbreviation = db.Column(VARCHAR(8) , name='abbreviation', nullable=False)
     
     stop = db.relationship('Stop',
                            primaryjoin='AlternativeName.stop_id == Stop.id',
