@@ -3,17 +3,22 @@ from dotenv import dotenv_values
 
 curr_path = os.path.dirname(__file__)
 dev_env_path = os.path.join(curr_path, '../.env')
+dev_env_file = dotenv_values(dotenv_path=dev_env_path)
 
-env_path = os.getenv('FLASK_ENV_PATH', dev_env_path)
+env_mode = os.getenv('FLASK_ENV', 'development')
 
-env_file = dotenv_values(dotenv_path=env_path)
+def get_env_value(key):
+    if env_mode == 'development':
+        return dev_env_file[key]
+    else:
+        return os.getenv(key)
 
-database_user = env_file['DATABASE_USER']
-database_pass = env_file['DATABASE_PASS']   
-database_host = env_file['DATABASE_HOST']
-database_port = env_file['DATABASE_PORT']
-database_database = env_file['DATABASE_DATABASE']
+database_user = get_env_value('DATABASE_USER')
+database_pass = get_env_value('DATABASE_PASS')   
+database_host = get_env_value('DATABASE_HOST')
+database_port = get_env_value('DATABASE_PORT')
+database_database = get_env_value('DATABASE_DATABASE')
 
 class Config:
-    SECRET_KEY = env_file['FLASK_SECRET']
+    SECRET_KEY = dev_env_file['FLASK_SECRET']
     SQLALCHEMY_DATABASE_URI = f'postgresql+psycopg://{database_user}:{database_pass}@{database_host}:{database_port}/{database_database}'
