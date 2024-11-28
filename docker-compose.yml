@@ -8,3 +8,4 @@ services:
       - FLASK_ENV=production
     env_file:
       - /etc/bustrackr-backend/.env
+    network_mode: "host"
