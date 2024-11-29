@@ -8,7 +8,6 @@ db = SQLAlchemy(app)
 
 from bustrackr_server import models # Need to import
 # from bustrackr_server.data_parser import process_static_data # This file is not included in the repo yet
-import os
 
 def fix_database():
     with app.app_context():
@@ -16,4 +15,5 @@ def fix_database():
         db.session.commit()
         # process_static_data()
 
-from bustrackr_server import routes
+from bustrackr_server.routes import register_routes
+register_routes(app)
