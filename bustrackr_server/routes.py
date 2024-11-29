@@ -10,17 +10,23 @@ def index():
     '''Handler for index the index (`/`) route'''
     return '<p>Hello, World!</p>'
 
-@app.route('/api/stops', methods=['POST'])
-def get_stops():
-    '''Handler for the `/api/stops` route'''
+@app.route('/api/quays', methods=['POST'])
+def get_quays():
+    '''Handler for the `/api/quays` route'''
     try:
         req = request.get_json()
+        if req is None:
+            raise ValueError('Empty JSON')
     except:
-        return 'Invalid JSON', 400
-    if req is None:
-        return 'Invalid JSON', 400
+        return orjson.dumps({
+            'status': 'error',
+            'message': 'Content-Type is incorrect, JSON is malformed, or empty'
+        }), 415 # Unsupported Media Type (either JSON parsing failed or Content-Type was not set to application/json)
     if 'lat_0' not in req or 'lon_0' not in req or 'lat_1' not in req or 'lon_1' not in req:
-        return 'Missing required fields', 400
+        return orjson.dumps({
+            'status': 'error',
+            'message': 'Missing required fields'
+        }), 400
     
     try:
         lat_0 = float(req['lat_0']) + 0.01
@@ -28,14 +34,20 @@ def get_stops():
         lat_1 = float(req['lat_1']) - 0.01
         lon_1 = float(req['lon_1']) + 0.01
     except ValueError:
-        return 'Invalid values', 400
+        return orjson.dumps({
+            'status': 'error',
+            'message': 'Invalid values'
+        }), 400
 
     lat_len = lat_0 - lat_1
     lon_len = lon_1 - lon_0
     area = lat_len * lon_len
     # Magic number, 0.025 is the maximum area allowed (completely arbitratory but somewhat reasonable)
     if area > 0.025:
-        return 'Area too large', 400
+        return orjson.dumps({
+            'status': 'error',
+            'message': 'Requested area is too large'
+        }), 422 # Unprocessable Content
     
     find_quays_query = select(
         Quay.stop_id.label('stop_id'),
@@ -59,6 +71,7 @@ def get_stops():
     quays_in_area = db.session.execute(find_quays_query).fetchall()
 
     json_response = {
+        'status': 'ok',
         'type': 'quays',
         'list': [],
     }
@@ -77,7 +90,6 @@ def get_stops():
     return (
         orjson.dumps(
             json_response,
-            # option=orjson.OPT_INDENT_2,
             default=orjson_default
         ),
         200
