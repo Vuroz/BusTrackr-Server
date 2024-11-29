@@ -50,6 +50,7 @@ def get_quays():
         }), 422 # Unprocessable Content
     
     find_quays_query = select(
+        Quay.id.label('id'),
         Quay.stop_id.label('stop_id'),
         Quay.public_code.label('code'),
         Quay.latitude.label('latitude'),
@@ -78,6 +79,7 @@ def get_quays():
 
     for quay in quays_in_area:
         json_response['list'].append({
+            'id': quay.id,
             'stop_id': quay.stop_id,
             'code': quay.code,
             'name': quay.name,
