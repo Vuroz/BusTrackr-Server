@@ -48,8 +48,8 @@ def format_quays_response(quays_in_area: List) -> dict:
             'type': 'quays',
             'list': [
                 {
-                    'id': quay.id,
-                    'stop_id': quay.stop_id,
+                    'id': str(quay.id),
+                    'stop_id': str(quay.stop_id),
                     'code': quay.code,
                     'name': quay.name,
                     'location': {'lat': quay.lat, 'lon': quay.lon}

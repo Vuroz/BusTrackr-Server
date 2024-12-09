@@ -49,8 +49,8 @@ def format_stops_response(stops_in_area: List) -> dict:
             'type': 'stops',
             'list': [
                 {
-                    'id': stop.id,
-                    'group_id': stop.group_id or None,
+                    'id': str(stop.id),
+                    'group_id': str(stop.group_id) if stop.group_id else None,
                     'name': stop.name,
                     'abb': stop.abb or None,
                     'location': {'lat': stop.lat, 'lon': stop.lon}
