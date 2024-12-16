@@ -1,5 +1,5 @@
 # Use an official Python runtime as a parent image
-FROM registry.access.redhat.com/ubi8/python-39
+FROM python:3.11-alpine
 
 # Set the working directory
 WORKDIR /app
@@ -14,4 +14,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 EXPOSE 8080
 
 # Set the command to run your application with Waitress
-CMD ["waitress-serve", "--port=8080", "run:app"]
+CMD ["waitress-serve", "--port=8080", "bustrackr_server:app"]

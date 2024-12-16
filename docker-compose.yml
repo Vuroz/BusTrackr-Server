@@ -1,8 +1,6 @@
 services:
   bustracker-io-backend:
     build: .
-    ports:
-      - "8080:8080"
     restart: always
     environment:
       - FLASK_ENV=production
