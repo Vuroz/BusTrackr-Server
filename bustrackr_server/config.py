@@ -19,6 +19,9 @@ database_host = get_env_value('DATABASE_HOST')
 database_port = get_env_value('DATABASE_PORT')
 database_database = get_env_value('DATABASE_DATABASE')
 
+trafiklab_url = get_env_value('TRAFIKLAB_URL')
+trafiklab_key = get_env_value('TRAFIKLAB_KEY')
+
 class Config:
     SECRET_KEY = get_env_value('FLASK_SECRET')
     SQLALCHEMY_DATABASE_URI = f'postgresql+psycopg://{database_user}:{database_pass}@{database_host}:{database_port}/{database_database}'
@@ -26,4 +29,5 @@ class Config:
     REDIS_PORT = get_env_value('REDIS_PORT')
     REDIS_PASS = get_env_value('REDIS_PASS')
     REDIS_DB = int(get_env_value('REDIS_DB'))
-    API_URL = get_env_value('TRAFIKLAB_URL') + '?key=' + get_env_value('TRAFIKLAB_KEY')
+    API_URL = f'{trafiklab_url}?key={trafiklab_key}'
+    
