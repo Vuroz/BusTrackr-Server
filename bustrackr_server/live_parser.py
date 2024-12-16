@@ -1,5 +1,5 @@
 from bustrackr_server.models_redis import VehicleLive
-from bustrackr_server import redis_client
+from bustrackr_server import redis_client, fix_redis
 import concurrent.futures as cf
 from threading import Thread
 from queue import Queue
@@ -23,17 +23,25 @@ def parse_live_chunk(buffer):
     return vehicle_live
 
 def write_to_redis(queue):
+    def write_to_the_server(vehicles):
+        try:
+            with redis_client.pipeline() as pipe:
+                for vehicle_live in vehicles:
+                    vehicle_live.save(pipeline=pipe)
+                    vehicle_live.expire(15, pipeline=pipe)
+                pipe.execute()
+        except ConnectionError:
+            fix_redis()
+            write_to_the_server(vehicles)
+
     vehicles = []
     while True:
         vehicle_live = queue.get()
         if vehicle_live is None:
             break
         vehicles.append(vehicle_live)
-    with redis_client.pipeline() as pipe:
-        for vehicle_live in vehicles:
-            vehicle_live.save(pipeline=pipe)
-            vehicle_live.expire(15, pipeline=pipe)
-        pipe.execute()
+
+    write_to_the_server()
 
 def process_data(data: str, writer_queue: Queue):
     buffer = []
