@@ -41,7 +41,7 @@ def write_to_redis(queue):
             break
         vehicles.append(vehicle_live)
 
-    write_to_the_server()
+    write_to_the_server(vehicles)
 
 def process_data(data: str, writer_queue: Queue):
     buffer = []
