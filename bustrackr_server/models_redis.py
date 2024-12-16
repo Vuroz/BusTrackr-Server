@@ -9,8 +9,8 @@ class VehicleLive(HashModel):
     vehicle_id: int = Field(index=True)
     bearing: float
     velocity: int
-    longitude: float
-    latitude: float
+    longitude: float = Field(index=True)
+    latitude: float = Field(index=True)
     timestamp: datetime
 
     class Meta:

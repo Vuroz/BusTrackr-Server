@@ -17,6 +17,9 @@ redis_client = redis.Redis(
     retry_on_timeout=True
 )
 
+redis_client.flushall()
+redis_client.flushdb()
+
 from bustrackr_server.models_redis import VehicleLive
 
 Migrator().run()
