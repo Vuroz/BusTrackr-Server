@@ -27,6 +27,11 @@ Migrator().run()
 from bustrackr_server import models # Need to import
 # from bustrackr_server.data_parser import process_static_data # This file is not included in the repo yet
 
+def fix_redis():
+    redis_client.flushall()
+    redis_client.flushdb()
+    Migrator().run()
+
 def fix_database():
     with app.app_context():
         db.create_all() # Create all the tables

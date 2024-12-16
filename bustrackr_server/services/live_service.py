@@ -1,5 +1,7 @@
 from typing import List, Tuple
 from bustrackr_server.models_redis import VehicleLive
+from bustrackr_server import fix_redis
+from threading import Timer
 
 def process_coordinates(req: dict) -> Tuple[float, float, float, float]:
     """Process and slightly adjust input coordinates."""
@@ -18,10 +20,15 @@ def is_area_too_large(lat_0: float, lon_0: float, lat_1: float, lon_1: float) ->
 
 def find_live_buses(lat_0: float, lon_0: float, lat_1: float, lon_1: float) -> List:
     """Fetch live buses from redis based on input coordinates"""
-    buses = VehicleLive.find(
-        (VehicleLive.latitude > lat_1) & (VehicleLive.latitude < lat_0) &  
-        (VehicleLive.longitude > lon_0) & (VehicleLive.longitude < lon_1)
-    ).all() # The resulting query is not optimized, but it works
+    try:
+        buses = VehicleLive.find(
+            (VehicleLive.latitude > lat_1) & (VehicleLive.latitude < lat_0) &  
+            (VehicleLive.longitude > lon_0) & (VehicleLive.longitude < lon_1)
+        ).all() # The resulting query is not optimized, but it works
+    except ConnectionError:
+        print('Redis seems to have crashed, try flushing etc')
+        Timer(1, fix_redis).start()
+        return []
     return buses
 
 def format_live_buses_response(live_buses_in_area: List) -> dict:
