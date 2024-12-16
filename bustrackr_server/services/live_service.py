@@ -37,17 +37,17 @@ def format_live_buses_response(live_buses_in_area: List) -> dict:
     live_buses_in_area = list(latest_entries.values())
     
     return {
-            'status': 'ok',
-            'type': 'live_buses',
-            'list': [
-                {
-                    'service_journey_id': str(bus.service_journey_id),
-                    'vehicle_id': str(bus.vehicle_id),
-                    'time': bus.timestamp,
-                    'bearing': bus.bearing,
-                    'velocity': bus.velocity,
-                    'location': {'lat': bus.latitude, 'lon': bus.longitude}
-                }
-                for bus in live_buses_in_area
-            ]
+        'status': 'ok',
+        'type': 'live_buses',
+        'list': [
+            {
+                'service_journey_id': str(bus.service_journey_id),
+                'vehicle_id': str(bus.vehicle_id),
+                'time': bus.timestamp,
+                'bearing': bus.bearing,
+                'velocity': bus.velocity,
+                'location': {'lat': bus.latitude, 'lon': bus.longitude}
+            }
+            for bus in live_buses_in_area
+        ]
     }
