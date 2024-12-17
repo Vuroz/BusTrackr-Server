@@ -11,7 +11,7 @@ from bustrackr_server.services.live_service import (
 live_bp = Blueprint('live', __name__)
 
 @live_bp.route('/live', methods=['POST'])
-def get_quays():
+def get_live_buses():
     try:
         req = request.get_json()
         validate_request(req)
