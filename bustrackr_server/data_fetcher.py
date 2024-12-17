@@ -17,7 +17,7 @@ def do_fetch():
             curr_timer.cancel()
 
         # Schedule the next fetch after 5 seconds
-        curr_timer = Timer(2, do_fetch)
+        curr_timer = Timer(5, do_fetch)
         curr_timer.daemon = True # If we quit we quit
         curr_timer.start()
 
