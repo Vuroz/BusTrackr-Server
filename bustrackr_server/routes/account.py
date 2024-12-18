@@ -6,6 +6,7 @@ from bustrackr_server.utils import orjson_default
 from bustrackr_server.services.authentication_service import (
     authenticate,
     generate_jwt_token,
+    getUserDetails,
     validate_jwt_token,
     create_user
 )
@@ -150,6 +151,75 @@ def register_user():
         return orjson.dumps({'status': 'error', 'message': 'Internal server error'}), 500
 
 
+@account_bp.route('/re-auth', methods=['POST'])
+@token_required
+def reauthenticate_user():
+    try:
+        user = getUserDetails(request.user['id'])
+        
+        if not user:
+            return orjson.dumps({'status': 'error', 'message': 'Invalid user.'}), 401
+        
+        token = generate_jwt_token(user)
+
+        response = make_response(orjson.dumps({
+            'status': 'success',
+            'message': 'Reauthentication successful',
+            'userData': {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'date_of_birth': user.date_of_birth,
+                'registration_date': user.registration_date,
+            },
+        }, default=orjson_default))
+
+        # Set the cookie securely
+        response.set_cookie(
+            'authToken',
+            token,
+            httponly=True,
+            secure=Config.ENV != "development",
+            samesite='Strict',
+            path='/',
+            max_age=3600,
+        )
+
+        return response, 200
+    
+    except KeyError as e:
+        return orjson.dumps({'status': 'error', 'message': f'Missing required field: {str(e)}'}), 400
+    except Exception as e:
+        return orjson.dumps({'status': 'error', 'message': 'Internal server error'}), 500
+
+@account_bp.route('/logout', methods=['POST'])
+@token_required
+def logout_user():
+    try:
+        response = make_response(orjson.dumps({
+            'status': 'success',
+            'message': 'Logout successful',
+        }, default=orjson_default))
+
+        # Clear the auth cookie
+        response.set_cookie(
+            'authToken',
+            '',
+            httponly=True,
+            secure=Config.ENV != "development",
+            samesite='Strict',
+            path='/',
+            expires=0
+        )
+
+        return response, 200
+    
+    except KeyError as e:
+        return orjson.dumps({'status': 'error', 'message': f'Missing required field: {str(e)}'}), 400
+    except Exception as e:
+        return orjson.dumps({'status': 'error', 'message': 'Internal server error'}), 500
+
+
 # curl -X POST http://localhost:5251/api/make-change \
 #      -H "Content-Type: application/json" \
 #      -H "Authorization: Bearer <TOKEN>" \
@@ -157,7 +227,7 @@ def register_user():
 @account_bp.route('/make-change', methods=['POST'])
 @token_required
 def make_change():
-    try:            
+    try:
         response = {
             'status': 'success',
             'message': 'Change successful',

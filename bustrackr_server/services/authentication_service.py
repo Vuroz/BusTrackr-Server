@@ -30,6 +30,11 @@ def authenticate(email: str, password: str) -> User:
         return user
     return None
 
+def getUserDetails(id: int) -> User:
+    """Get user details from an user ID."""
+    user_query = select(User).where(User.id == id)
+    return db.session.execute(user_query).scalars().first()
+
 def create_user(username: str, email: str, password: str, date_of_birth: str) -> User:
     """Create a user in the database."""
     # Check if username or email already exists
