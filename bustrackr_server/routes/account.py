@@ -1,4 +1,4 @@
-from flask import Blueprint, request
+from flask import Blueprint, make_response, request
 from functools import wraps
 import orjson
 from bustrackr_server.utils import orjson_default
@@ -67,10 +67,9 @@ def authenticate_user():
         
         token = generate_jwt_token(user)
 
-        response = {
+        response = make_response(orjson.dumps({
             'status': 'success',
             'message': 'Login successful',
-            'token': token,
             'userData': {
                 'id': user.id,
                 'username': user.username,
@@ -78,8 +77,20 @@ def authenticate_user():
                 'date_of_birth': user.date_of_birth,
                 'registration_date': user.registration_date,
             },
-        }
-        return orjson.dumps(response, default=orjson_default), 200
+        }, default=orjson_default))
+
+        # Set the cookie securely
+        response.set_cookie(
+            'authToken',
+            token,
+            httponly=True,
+            #secure=True,
+            #samesite='Strict',
+            #path='/',
+            max_age=3600
+        )
+
+        return response, 200
     
     except KeyError as e:
         return orjson.dumps({'status': 'error', 'message': f'Missing required field: {str(e)}'}), 400
