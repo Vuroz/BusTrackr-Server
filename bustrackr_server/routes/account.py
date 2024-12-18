@@ -1,6 +1,7 @@
 from flask import Blueprint, make_response, request
 from functools import wraps
 import orjson
+from bustrackr_server.config import Config
 from bustrackr_server.utils import orjson_default
 from bustrackr_server.services.authentication_service import (
     authenticate,
@@ -18,12 +19,7 @@ def token_required(f):
     """
     @wraps(f)
     def decorated(*args, **kwargs):
-        token = None
-
-        # Extract token from the 'Authorization' header
-        auth_header = request.headers.get('Authorization')
-        if auth_header and 'Bearer' in auth_header:
-            token = auth_header.split(" ")[1]  # Extract token part
+        token = request.cookies.get('authToken')
         
         if not token:
             return orjson.dumps({'status': 'error', 'message': 'Token is missing'}), 401
@@ -84,10 +80,10 @@ def authenticate_user():
             'authToken',
             token,
             httponly=True,
-            #secure=True,
-            #samesite='Strict',
-            #path='/',
-            max_age=3600
+            secure=Config.ENV != "development",
+            samesite='Strict',
+            path='/',
+            max_age=3600,
         )
 
         return response, 200
