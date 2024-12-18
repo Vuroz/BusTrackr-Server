@@ -8,4 +8,4 @@ def init_db_command():
     fix_database()
 
 if __name__ == '__main__':
-    app.run(host='localhost', port=5000, debug=False) # Start the application :)
+    app.run(host='localhost', port=5005, debug=False) # Start the application :)
