@@ -22,8 +22,10 @@ def token_required(f):
     def decorated(*args, **kwargs):
         token = request.cookies.get('authToken')
         
+        silence_unauth = request.headers.get('X-Silence-Unauthorized', 'false').lower() == 'true'
+        
         if not token:
-            return orjson.dumps({'status': 'error', 'message': 'Token is missing'}), 401
+            return orjson.dumps({'status': 'error', 'message': 'Token is missing'}), 200 if silence_unauth else 401
 
         try:
             validate_jwt_token(request, token)
