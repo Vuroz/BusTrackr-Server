@@ -1,4 +1,4 @@
-from sqlalchemy.dialects.postgresql import BIGINT, INTEGER, SMALLINT, TIMESTAMP, TIME, CHAR, VARCHAR, NUMERIC, BOOLEAN
+from sqlalchemy.dialects.postgresql import BIGINT, INTEGER, SMALLINT, TIMESTAMP, TIME, CHAR, VARCHAR, NUMERIC, BOOLEAN, BYTEA, DATE
 from bustrackr_server import db
 
 class Authority(db.Model):
@@ -401,3 +401,44 @@ class Quay(db.Model):
                                       primaryjoin='Quay.id == PassengerStop.quay_id',
                                       back_populates='quay',
                                       uselist=True)
+
+class User(db.Model):
+    __tablename__ = 'user'
+    id = db.Column(INTEGER, primary_key=True, name='id', nullable=False, autoincrement=True)
+    username = db.Column(VARCHAR(20), name='username', nullable=False, unique=True)
+    email = db.Column(VARCHAR(120), name='email', nullable=False, unique=True)
+    password_hash = db.Column(BYTEA, name='password_hash', nullable=False)
+    date_of_birth = db.Column(DATE, name='date_of_birth', nullable=True)
+    registration_date = db.Column(TIMESTAMP, name='registration_date', nullable=True, default=db.func.current_timestamp())
+
+class FavoriteStop(db.Model):
+    __tablename__ = 'favorite_stops'
+    userID = db.Column(INTEGER, db.ForeignKey('user.id'), name='userID', nullable=False, primary_key=True)
+    stop_id = db.Column(BIGINT, db.ForeignKey('stop.id'), name='stop_id', nullable=False, primary_key=True)
+
+class FavoriteLine(db.Model):
+    __tablename__ = 'favorite_lines'
+    userID = db.Column(INTEGER, db.ForeignKey('user.id'), name='userID', nullable=False, primary_key=True)
+    line_id = db.Column(BIGINT, db.ForeignKey('line.id'), name='line_id', nullable=False, primary_key=True)
+
+class LoginLog(db.Model):
+    __tablename__ = 'login_logs'
+    userID = db.Column(INTEGER, db.ForeignKey('user.id'), name='userID', nullable=False, primary_key=True)
+    time = db.Column(TIMESTAMP, name='time', nullable=False, primary_key=True, default=db.func.current_timestamp())
+    ip = db.Column(VARCHAR(15), name='ip', nullable=False)
+
+class ReportLog(db.Model):
+    __tablename__ = 'report_logs'
+    userID = db.Column(INTEGER, db.ForeignKey('user.id'), name='userID', nullable=False, primary_key=True)
+    generatedOn = db.Column(TIMESTAMP, name='generatedOn', nullable=False, primary_key=True, default=db.func.current_timestamp())
+    ip = db.Column(VARCHAR(15), name='ip', nullable=False)
+
+agreement_enum = db.Enum('terms_of_service', 'data_policy', name='agreement_type')
+
+class AgreementLog(db.Model):
+    __tablename__ = 'agreement_logs'
+    userID = db.Column(INTEGER, db.ForeignKey('user.id'), name='userID', nullable=False, primary_key=True)
+    time = db.Column(TIMESTAMP, name='time', nullable=False, primary_key=True, default=db.func.current_timestamp())
+    type = db.Column(agreement_enum, name='type', nullable=False)
+    ip = db.Column(VARCHAR(15), name='ip', nullable=False)
+    agreement_hash = db.Column(CHAR(128), name='agreement_hash', nullable=False)

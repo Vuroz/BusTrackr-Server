@@ -30,4 +30,4 @@ class Config:
     REDIS_PASS = get_env_value('REDIS_PASS')
     REDIS_DB = int(get_env_value('REDIS_DB'))
     API_URL = f'{trafiklab_url}?key={trafiklab_key}'
-    
+    JWT_SECRET = get_env_value('JWT_SECRET')

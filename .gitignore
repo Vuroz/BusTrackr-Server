@@ -7,6 +7,7 @@ bustrackr_server/data_parser.py
 
 ### Python venv ###
 .venv
+venv
 
 ### Flask ###
 instance/*
