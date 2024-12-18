@@ -7,6 +7,11 @@ app = Flask(__name__)
 app.config.from_object(Config)
 db = SQLAlchemy(app)
 
+if (Config.ENV == "development"):
+    from flask_cors import CORS
+    CORS(app)
+    CORS(app, resources={r"/*": {"origins": "http://localhost:8080"}})
+
 redis_client = redis.Redis(
     host=Config.REDIS_HOST,
     port=Config.REDIS_PORT,

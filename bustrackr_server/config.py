@@ -31,3 +31,4 @@ class Config:
     REDIS_DB = int(get_env_value('REDIS_DB'))
     API_URL = f'{trafiklab_url}?key={trafiklab_key}'
     JWT_SECRET = get_env_value('JWT_SECRET')
+    ENV = os.getenv('FLASK_ENV', 'development')
