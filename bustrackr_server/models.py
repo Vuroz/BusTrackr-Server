@@ -1,4 +1,5 @@
 from sqlalchemy.dialects.postgresql import BIGINT, INTEGER, SMALLINT, TIMESTAMP, TIME, CHAR, VARCHAR, NUMERIC, BOOLEAN, BYTEA, DATE
+from sqlalchemy.orm import validates
 from bustrackr_server import db
 
 class Authority(db.Model):
@@ -410,6 +411,19 @@ class User(db.Model):
     password_hash = db.Column(BYTEA, name='password_hash', nullable=False)
     date_of_birth = db.Column(DATE, name='date_of_birth', nullable=True)
     registration_date = db.Column(TIMESTAMP, name='registration_date', nullable=True, default=db.func.current_timestamp())
+
+    @validates('username', 'email')
+    def convert_to_lowercase(self, key, value):
+        """Ensure that username and email are always stored in lowercase."""
+        if value is not None:
+            return value.lower()
+        return value
+
+    # Add SQL-side constraints using server_default and triggers
+    __table_args__ = (
+        db.CheckConstraint("LOWER(username) = username", name='check_username_lowercase'),
+        db.CheckConstraint("LOWER(email) = email", name='check_email_lowercase'),
+    )
 
 class FavoriteStop(db.Model):
     __tablename__ = 'favorite_stops'

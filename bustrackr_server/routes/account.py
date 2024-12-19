@@ -15,6 +15,8 @@ from bustrackr_server.services.authentication_service import (
 import jwt
 from datetime import datetime, date
 import re
+from typing import Dict, Any, Union, Tuple
+
 
 account_bp = Blueprint('account', __name__)
 
@@ -50,16 +52,14 @@ def token_required(f):
 @account_bp.route('/login', methods=['POST'])
 def authenticate_user():
     try:
+        required_fields = {
+            'email': (str, True),
+            'password': str,
+            'long_expire': bool
+}
         req = request.get_json()
-        validate_request(req, {'email', 'password', 'long_expire'})
+        validate_request(req, required_fields)
         
-        # Validate data types
-        if not all(isinstance(req[field], str) for field in ['email', 'password']):
-            return orjson.dumps({'status': 'error', 'message': 'Email, and password must be strings'}), 400
-        
-        if not all(isinstance(req[field], bool) for field in [ 'long_expire']):
-            return orjson.dumps({'status': 'error', 'message': 'Terms of service, data policy, and long_expire must be booleans'}), 400
-    
     except ValueError as e:
         return orjson.dumps({'status': 'error', 'message': str(e)}), 400
     except TypeError as e:
@@ -68,8 +68,8 @@ def authenticate_user():
         return orjson.dumps({'status': 'error', 'message': 'Internal server error'}), 500
     
     try:
-        email = req['email']
-        password = req['password']
+        email = req['email'].lower()
+        password = req['password'].lower()
         long_expire = req['long_expire']
         
         user = authenticate(email, password)
@@ -105,16 +105,19 @@ def authenticate_user():
 @account_bp.route('/register', methods=['POST'])
 def register_user():
     try:
+        required_fields = {
+            'username': (str, True),
+            'email': (str, True),
+            'password': str,
+            'date_of_birth': str,
+            'terms_of_service': bool,
+            'data_policy': bool,
+            'long_expire': int
+        }
+
         req = request.get_json()
-        validate_request(req, {'username', 'email', 'password', 'date_of_birth', 'terms_of_service', 'data_policy', 'long_expire'})
+        validate_request(req, required_fields)
         
-        # Validate data types
-        if not all(isinstance(req[field], str) for field in ['username', 'email', 'password', 'date_of_birth']):
-            return orjson.dumps({'status': 'error', 'message': 'Username, email, password, and date_of_birth must be strings'}), 400
-        
-        if not all(isinstance(req[field], bool) for field in ['terms_of_service', 'data_policy', 'long_expire']):
-            return orjson.dumps({'status': 'error', 'message': 'Terms of service, data policy, and long_expire must be booleans'}), 400
-            
     except ValueError as e:
         return orjson.dumps({'status': 'error', 'message': str(e)}), 400
     except TypeError as e:
@@ -149,8 +152,8 @@ def register_user():
         return orjson.dumps({'status': 'error', 'message': 'You must accept the Terms of Service and Data Policy.'}), 400
     
     try:
-        username = req['username']
-        email = req['email']
+        username = req['username'].lower()
+        email = req['email'].lower()
         password = req['password']
         date_of_birth = req['date_of_birth']
         long_expire = req['long_expire']
@@ -262,9 +265,37 @@ def make_change():
     except Exception as e:
         return orjson.dumps({'status': 'error', 'message': 'Internal server error'}), 500
 
-def validate_request(req: dict, required_fields: dict) -> None:
+def validate_request(req: Dict[str, Any], required_fields: Dict[str, Union[type, Tuple[type, bool]]]) -> None:
+    """
+    Validates the request against the required fields.
+
+    Args:
+        req (Dict[str, Any]): The request data to validate.
+        required_fields (Dict[str, Union[type, Tuple[type, bool]]]): A dictionary where the key is the field name 
+            and the value is either the required data type or a tuple specifying the required data type 
+            and whether the field should be converted to lowercase.
+    
+    Raises:
+        TypeError: If req is None or if any of the fields are not of the expected type.
+        ValueError: If any of the required fields are missing.
+    """
     if req is None:
         raise TypeError("Content-Type is incorrect, JSON is malformed, or empty")
-    if not required_fields.issubset(req):
-        raise ValueError("Missing required fields")
     
+    if not required_fields.keys() <= req.keys():
+        missing_fields = required_fields.keys() - req.keys()
+        raise ValueError(f"Missing required fields: {', '.join(missing_fields)}")
+    
+    for field, field_criteria in required_fields.items():
+        expected_type, convert_to_lowercase = field_criteria if isinstance(field_criteria, tuple) else (field_criteria, False)
+        
+        if field not in req:
+            raise ValueError(f"Missing required field: {field}")
+        
+        value = req[field]
+        
+        if not isinstance(value, expected_type):
+            raise TypeError(f"Field '{field}' is expected to be of type {expected_type.__name__}, but got {type(value).__name__}")
+        
+        if convert_to_lowercase and isinstance(value, str):
+            req[field] = value.lower()
