@@ -10,6 +10,7 @@ from bustrackr_server.services.authentication_service import (
     clear_jwt_token,
     authenticate,
     create_user,
+    update_user,
     getUserDetails,
 )
 import jwt
@@ -43,11 +44,6 @@ def token_required(f):
         return f(*args, **kwargs)
     
     return decorated
-
-
-# curl -X POST http://localhost:5251/api/login \      
-#      -H "Content-Type: application/json" \
-#      -d '{"email": "<EMAIL>", "password": "<PASSWORD>"}'
 
 @account_bp.route('/login', methods=['POST'])
 def authenticate_user():
@@ -97,10 +93,6 @@ def authenticate_user():
         return orjson.dumps({'status': 'error', 'message': f'Missing required field: {str(e)}'}), 400
     except Exception as e:
         return orjson.dumps({'status': 'error', 'message': 'Internal server error'}), 500
-    
-# curl -X POST http://localhost:5251/api/register \
-#      -H "Content-Type: application/json" \
-#      -d '{"username": "testuser", "password": "password123", "email": "test@test.com", "date_of_birth": "2002-06-16"}'
     
 @account_bp.route('/register', methods=['POST'])
 def register_user():
@@ -244,10 +236,76 @@ def logout_user():
     except Exception as e:
         return orjson.dumps({'status': 'error', 'message': 'Internal server error'}), 500
 
+@account_bp.route('/update-account', methods=['POST'])
+@token_required
+def update_account():
+    try:
+        required_fields = {
+            'username': (str, True),
+            'email': (str, True),
+            'date_of_birth': str,
+        }
 
-# curl -X POST http://localhost:5251/api/make-change \
-#      -H "Content-Type: application/json" \
-#      -H "Authorization: Bearer <TOKEN>" \
+        req = request.get_json()
+        validate_request(req, required_fields)
+        
+    except ValueError as e:
+        return orjson.dumps({'status': 'error', 'message': str(e)}), 400
+    except TypeError as e:
+        return orjson.dumps({'status': 'error', 'message': str(e)}), 415
+    except:
+        return orjson.dumps({'status': 'error', 'message': 'Internal server error'}), 500
+    
+    # Validate username length
+    if len(req['username']) < 3:
+        return orjson.dumps({'status': 'error', 'message': 'Username must be at least 3 characters.'}), 400
+    
+    # Validate email format using regex
+    if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', req['email']):
+        return orjson.dumps({'status': 'error', 'message': 'Invalid email format'}), 400
+    
+    # Validate age (13+ years)
+    try:
+        birth_date = datetime.strptime(req['date_of_birth'], '%Y-%m-%d').date()
+        today = date.today()
+        age = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
+        if age < 13:
+            return orjson.dumps({'status': 'error', 'message': 'Must be at least 13 years old.'}), 400
+    except ValueError as e:
+        return orjson.dumps({'status': 'error', 'message': 'Invalid date format. Use YYYY-MM-DD.'}), 400
+
+    try:
+        userID = request.user['id']
+        username = req['username'].lower()
+        email = req['email'].lower()
+        date_of_birth = req['date_of_birth']
+        
+        try:
+            print(userID, username, email, date_of_birth)
+            update_user(userID, username, email, date_of_birth)
+        except ValueError as e:
+            if 'Username is already taken' in str(e):
+                return orjson.dumps({'status': 'error', 'message': 'Username is already taken'}), 400
+            elif 'Email is already taken' in str(e):
+                return orjson.dumps({'status': 'error', 'message': 'Email is already taken'}), 400
+            else:
+                return orjson.dumps({'status': 'error', 'message': 'Internal server error'}), 500
+        except Exception as e:
+            return orjson.dumps({'status': 'error', 'message': 'Internal server error'}), 500
+
+        response = make_response(orjson.dumps({
+            'status': 'success',
+            'message': 'Updated account details successfully',
+        }, default=orjson_default))
+
+        renew_jwt_token(response, request)
+
+        return response, 200
+    
+    except KeyError as e:
+        return orjson.dumps({'status': 'error', 'message': f'Missing required field: {str(e)}'}), 400
+    except Exception as e:
+        return orjson.dumps({'status': 'error', 'message': 'Internal server error'}), 500
 
 @account_bp.route('/make-change', methods=['POST'])
 @token_required
@@ -258,6 +316,9 @@ def make_change():
             'message': 'Change successful',
             'changeBy': request.user['id'],
         }
+        
+        renew_jwt_token(response, request)
+        
         return orjson.dumps(response, default=orjson_default), 200
     
     except KeyError as e:

@@ -54,6 +54,34 @@ def create_user(username: str, email: str, password: str, date_of_birth: str) ->
     except IntegrityError as e:
         db.session.rollback()
         raise e
+    
+def update_user(user_id: int, username: str , email: str, date_of_birth: str) -> User:
+    """Update user details in the database."""
+    user = getUserDetails(user_id)
+    if not user:
+        raise ValueError('User not found')
+
+    existing_user = User.query.filter(and_(User.id != user_id, (User.username == username) | (User.email == email))).first()
+    
+    if existing_user:
+        if existing_user.username == username:
+            raise ValueError('Username is already taken')
+        elif existing_user.email == email:
+            raise ValueError('Email is already taken')
+
+    try:
+        if username:
+            user.username = username
+        if email:
+            user.email = email
+        if date_of_birth:
+            user.date_of_birth = date_of_birth
+            
+        db.session.commit()
+        return user
+    except IntegrityError as e:
+        db.session.rollback()
+        raise e
 
 def add_jwt_token(response: Response, userID: int, long_expire: bool) -> None:
     """
