@@ -11,6 +11,8 @@ from bustrackr_server.services.authentication_service import (
     create_user
 )
 import jwt
+from datetime import datetime, date
+import re
 
 account_bp = Blueprint('account', __name__)
 
@@ -105,13 +107,39 @@ def authenticate_user():
 def register_user():
     try:
         req = request.get_json()
-        validate_request(req, {'username', 'email', 'password', 'date_of_birth'})
+        validate_request(req, {'username', 'email', 'password', 'date_of_birth', 'terms_of_service', 'data_policy'})
     except ValueError as e:
         return orjson.dumps({'status': 'error', 'message': str(e)}), 400
     except TypeError as e:
         return orjson.dumps({'status': 'error', 'message': str(e)}), 415
     except:
         return orjson.dumps({'status': 'error', 'message': 'Internal server error'}), 500
+    
+    # Validate username length
+    if len(req['username']) < 3:
+        return orjson.dumps({'status': 'error', 'message': 'Username must be at least 3 characters.'}), 400
+    
+    # Validate email format using regex
+    if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', req['email']):
+        return orjson.dumps({'status': 'error', 'message': 'Invalid email format'}), 400
+    
+    # Validate password length
+    if len(req['password']) < 5:
+        return orjson.dumps({'status': 'error', 'message': 'Password must be at least 5 characters.'}), 400
+    
+    # Validate age (13+ years)
+    try:
+        birth_date = datetime.strptime(req['date_of_birth'], '%Y-%m-%d').date()
+        today = date.today()
+        age = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
+        if age < 13:
+            return orjson.dumps({'status': 'error', 'message': 'Must be at least 13 years old.'}), 400
+    except ValueError:
+        return orjson.dumps({'status': 'error', 'message': 'Invalid date format. Use YYYY-MM-DD.'}), 400
+    
+    # Validate terms of service and data policy acceptance
+    if not req['terms_of_service'] or not req['data_policy']:
+        return orjson.dumps({'status': 'error', 'message': 'You must accept the Terms of Service and Data Policy.'}), 400
     
     try:
         username = req['username']
@@ -133,10 +161,9 @@ def register_user():
                     
         token = generate_jwt_token(user)
 
-        response = {
+        response = make_response(orjson.dumps({
             'status': 'success',
-            'message': 'Registration successful',
-            'token': token,
+            'message': 'Login successful',
             'userData': {
                 'id': user.id,
                 'username': user.username,
@@ -144,8 +171,20 @@ def register_user():
                 'date_of_birth': user.date_of_birth,
                 'registration_date': user.registration_date,
             },
-        }
-        return orjson.dumps(response, default=orjson_default), 200
+        }, default=orjson_default))
+
+        # Set the cookie securely
+        response.set_cookie(
+            'authToken',
+            token,
+            httponly=True,
+            secure=Config.ENV != "development",
+            samesite='Strict',
+            path='/',
+            max_age=3600,
+        )
+
+        return response, 200
     
     except KeyError as e:
         return orjson.dumps({'status': 'error', 'message': f'Missing required field: {str(e)}'}), 400
