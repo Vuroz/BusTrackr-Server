@@ -4,11 +4,13 @@ import orjson
 from bustrackr_server.config import Config
 from bustrackr_server.utils import orjson_default
 from bustrackr_server.services.authentication_service import (
-    authenticate,
-    generate_jwt_token,
-    getUserDetails,
+    add_jwt_token,
+    renew_jwt_token,
     validate_jwt_token,
-    create_user
+    clear_jwt_token,
+    authenticate,
+    create_user,
+    getUserDetails,
 )
 import jwt
 from datetime import datetime, date
@@ -49,7 +51,15 @@ def token_required(f):
 def authenticate_user():
     try:
         req = request.get_json()
-        validate_request(req, {'email', 'password'})
+        validate_request(req, {'email', 'password', 'long_expire'})
+        
+        # Validate data types
+        if not all(isinstance(req[field], str) for field in ['email', 'password']):
+            return orjson.dumps({'status': 'error', 'message': 'Email, and password must be strings'}), 400
+        
+        if not all(isinstance(req[field], bool) for field in [ 'long_expire']):
+            return orjson.dumps({'status': 'error', 'message': 'Terms of service, data policy, and long_expire must be booleans'}), 400
+    
     except ValueError as e:
         return orjson.dumps({'status': 'error', 'message': str(e)}), 400
     except TypeError as e:
@@ -60,13 +70,12 @@ def authenticate_user():
     try:
         email = req['email']
         password = req['password']
+        long_expire = req['long_expire']
         
         user = authenticate(email, password)
         
         if not user:
             return orjson.dumps({'status': 'error', 'message': 'Invalid email or password'}), 401
-        
-        token = generate_jwt_token(user)
 
         response = make_response(orjson.dumps({
             'status': 'success',
@@ -80,16 +89,7 @@ def authenticate_user():
             },
         }, default=orjson_default))
 
-        # Set the cookie securely
-        response.set_cookie(
-            'authToken',
-            token,
-            httponly=True,
-            secure=Config.ENV != "development",
-            samesite='Strict',
-            path='/',
-            max_age=3600,
-        )
+        add_jwt_token(response, user.id, long_expire)
 
         return response, 200
     
@@ -97,7 +97,6 @@ def authenticate_user():
         return orjson.dumps({'status': 'error', 'message': f'Missing required field: {str(e)}'}), 400
     except Exception as e:
         return orjson.dumps({'status': 'error', 'message': 'Internal server error'}), 500
-    
     
 # curl -X POST http://localhost:5251/api/register \
 #      -H "Content-Type: application/json" \
@@ -107,7 +106,15 @@ def authenticate_user():
 def register_user():
     try:
         req = request.get_json()
-        validate_request(req, {'username', 'email', 'password', 'date_of_birth', 'terms_of_service', 'data_policy'})
+        validate_request(req, {'username', 'email', 'password', 'date_of_birth', 'terms_of_service', 'data_policy', 'long_expire'})
+        
+        # Validate data types
+        if not all(isinstance(req[field], str) for field in ['username', 'email', 'password', 'date_of_birth']):
+            return orjson.dumps({'status': 'error', 'message': 'Username, email, password, and date_of_birth must be strings'}), 400
+        
+        if not all(isinstance(req[field], bool) for field in ['terms_of_service', 'data_policy', 'long_expire']):
+            return orjson.dumps({'status': 'error', 'message': 'Terms of service, data policy, and long_expire must be booleans'}), 400
+            
     except ValueError as e:
         return orjson.dumps({'status': 'error', 'message': str(e)}), 400
     except TypeError as e:
@@ -146,6 +153,7 @@ def register_user():
         email = req['email']
         password = req['password']
         date_of_birth = req['date_of_birth']
+        long_expire = req['long_expire']
         
         try:
             user = create_user(username, email, password, date_of_birth)
@@ -158,8 +166,6 @@ def register_user():
                 return orjson.dumps({'status': 'error', 'message': 'Internal server error'}), 500
         except:
             return orjson.dumps({'status': 'error', 'message': 'Internal server error'}), 500
-                    
-        token = generate_jwt_token(user)
 
         response = make_response(orjson.dumps({
             'status': 'success',
@@ -173,16 +179,8 @@ def register_user():
             },
         }, default=orjson_default))
 
-        # Set the cookie securely
-        response.set_cookie(
-            'authToken',
-            token,
-            httponly=True,
-            secure=Config.ENV != "development",
-            samesite='Strict',
-            path='/',
-            max_age=3600,
-        )
+        # Add JWT token.
+        add_jwt_token(response, user.id, long_expire)
 
         return response, 200
     
@@ -200,8 +198,6 @@ def reauthenticate_user():
         
         if not user:
             return orjson.dumps({'status': 'error', 'message': 'Invalid user.'}), 401
-        
-        token = generate_jwt_token(user)
 
         response = make_response(orjson.dumps({
             'status': 'success',
@@ -215,21 +211,14 @@ def reauthenticate_user():
             },
         }, default=orjson_default))
 
-        # Set the cookie securely
-        response.set_cookie(
-            'authToken',
-            token,
-            httponly=True,
-            secure=Config.ENV != "development",
-            samesite='Strict',
-            path='/',
-            max_age=3600,
-        )
+        # Renew authToken.
+        renew_jwt_token(response, request)
 
         return response, 200
     
     except KeyError as e:
-        return orjson.dumps({'status': 'error', 'message': f'Missing required field: {str(e)}'}), 400
+        raise e
+        #return orjson.dumps({'status': 'error', 'message': f'Missing required field: {str(e)}'}), 400
     except Exception as e:
         return orjson.dumps({'status': 'error', 'message': 'Internal server error'}), 500
 
@@ -242,16 +231,8 @@ def logout_user():
             'message': 'Logout successful',
         }, default=orjson_default))
 
-        # Clear the auth cookie
-        response.set_cookie(
-            'authToken',
-            '',
-            httponly=True,
-            secure=Config.ENV != "development",
-            samesite='Strict',
-            path='/',
-            expires=0
-        )
+        # Clear the JWT token
+        clear_jwt_token(response)
 
         return response, 200
     

@@ -6,7 +6,7 @@ from bustrackr_server import Config
 from argon2 import PasswordHasher
 import jwt
 import datetime
-from flask import Request
+from flask import Request, Response
 
 ph = PasswordHasher()
 
@@ -55,23 +55,96 @@ def create_user(username: str, email: str, password: str, date_of_birth: str) ->
         db.session.rollback()
         raise e
 
-def generate_jwt_token(user: User) -> str:
+def add_jwt_token(response: Response, userID: int, long_expire: bool) -> None:
     """
     Function for generating a JWT token.
     This function will create and return a JWT token for the authenticated user.
     """
     
-    secret_key = Config.JWT_SECRET
+    if not isinstance(userID, int):
+        raise TypeError('userID must be an integer')
+    if not isinstance(long_expire, bool):
+        raise TypeError('long_expire must be a boolean')
+    
+    token_life = datetime.timedelta(days=30) if long_expire else datetime.timedelta(hours=1)
+    
     payload = {
-        'user_id': user.id,
-        'exp': datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=1)
+        'user_id': userID,
+        'long_expire': long_expire,
+        'exp': datetime.datetime.now(datetime.timezone.utc) + token_life
     }
-    token = jwt.encode(payload, secret_key, algorithm='HS256')
-    return token
+    
+    token = jwt.encode(payload, Config.JWT_SECRET, algorithm='HS256')
+    
+    response.set_cookie(
+        'authToken',
+        token,
+        httponly=True,
+        secure=Config.ENV != "development",
+        samesite='Strict',
+        path='/',
+        max_age=token_life.total_seconds(),
+    )
+    
+def renew_jwt_token(response: Response, request: Request) -> None:
+    """
+    Function for renewing a JWT token.
+    This function will create and return a JWT token for the authenticated user.
+    """
+    
+    if not hasattr(request, 'tokenValidated') or not request.tokenValidated:
+        raise jwt.InvalidTokenError()
+    
+    userID = request.user['id']
+    long_expire = request.user['long_expire']
+    
+    if not isinstance(userID, int):
+        raise TypeError('userID must be an integer')
+    if not isinstance(long_expire, bool):
+        raise TypeError('long_expire must be a boolean')
+    
+    token_life = datetime.timedelta(days=30) if long_expire else datetime.timedelta(hours=1)
+    
+    payload = {
+        'user_id': userID,
+        'long_expire': long_expire,
+        'exp': datetime.datetime.now(datetime.timezone.utc) + token_life
+    }
+    
+    token = jwt.encode(payload, Config.JWT_SECRET, algorithm='HS256')
+    
+    response.set_cookie(
+        'authToken',
+        token,
+        httponly=True,
+        secure=Config.ENV != "development",
+        samesite='Strict',
+        path='/',
+        max_age=token_life.total_seconds(),
+    )
+    
+def clear_jwt_token(response: Response) -> None:
+    """
+    Function for clearing a JWT token.
+    This function will create and return a JWT token for the authenticated user.
+    """
+    
+    token = jwt.encode({}, Config.JWT_SECRET, algorithm='HS256')
+    
+    response.set_cookie(
+        'authToken',
+        token,
+        httponly=True,
+        secure=Config.ENV != "development",
+        samesite='Strict',
+        path='/',
+        max_age=0,
+    )
 
 def validate_jwt_token(request: Request, token: str) -> None:
     secret_key = Config.JWT_SECRET
     decoded_token = jwt.decode(token, secret_key, algorithms=['HS256'])
             
     # Attach user information to the request context
-    request.user = { 'id': decoded_token['user_id'] }
+    request.user = { 'id': decoded_token['user_id'], 'long_expire': decoded_token['long_expire'] }
+    request.tokenValidated = True
