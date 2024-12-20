@@ -1,3 +1,4 @@
+from sqlalchemy.exc import IntegrityError
 from flask import Blueprint, make_response, request
 from functools import wraps
 import orjson
@@ -12,6 +13,7 @@ from bustrackr_server.services.authentication_service import (
     create_user,
     update_user,
     getUserDetails,
+    change_password
 )
 import jwt
 from datetime import datetime, date
@@ -281,7 +283,6 @@ def update_account():
         date_of_birth = req['date_of_birth']
         
         try:
-            print(userID, username, email, date_of_birth)
             update_user(userID, username, email, date_of_birth)
         except ValueError as e:
             if 'Username is already taken' in str(e):
@@ -296,6 +297,62 @@ def update_account():
         response = make_response(orjson.dumps({
             'status': 'success',
             'message': 'Updated account details successfully',
+        }, default=orjson_default))
+
+        renew_jwt_token(response, request)
+
+        return response, 200
+    
+    except KeyError as e:
+        return orjson.dumps({'status': 'error', 'message': f'Missing required field: {str(e)}'}), 400
+    except Exception as e:
+        return orjson.dumps({'status': 'error', 'message': 'Internal server error'}), 500
+    
+@account_bp.route('/update-password', methods=['POST'])
+@token_required
+def update_password():
+    try:
+        required_fields = {
+            'old_password': str,
+            'new_password': str,
+        }
+
+        req = request.get_json()
+        validate_request(req, required_fields)
+        
+    except ValueError as e:
+        return orjson.dumps({'status': 'error', 'message': str(e)}), 400
+    except TypeError as e:
+        return orjson.dumps({'status': 'error', 'message': str(e)}), 415
+    except:
+        return orjson.dumps({'status': 'error', 'message': 'Internal server error'}), 500
+    
+    # Validate password length
+    if len(req['new_password']) < 5:
+        return orjson.dumps({'status': 'error', 'message': 'New password must be at least 5 characters.'}), 400 
+
+    try:
+        user_id = request.user['id']
+        old_password = req['old_password']
+        new_password = req['new_password']
+        
+        try:
+            change_password(user_id, old_password, new_password)
+        except ValueError as e:
+            if 'User not found' in str(e):
+                return orjson.dumps({'status': 'error', 'message': 'User not found'}), 404
+            elif 'Old password is incorrect' in str(e):
+                return orjson.dumps({'status': 'error', 'message': 'Old password is incorrect'}), 400
+            else:
+                return orjson.dumps({'status': 'error', 'message': 'Internal server error'}), 500
+        except IntegrityError as e:
+            return orjson.dumps({'status': 'error', 'message': 'Database error occurred'}), 500
+        except Exception as e:
+            return orjson.dumps({'status': 'error', 'message': 'Internal server error'}), 500
+
+        response = make_response(orjson.dumps({
+            'status': 'success',
+            'message': 'Password was changed successfully',
         }, default=orjson_default))
 
         renew_jwt_token(response, request)

@@ -83,6 +83,23 @@ def update_user(user_id: int, username: str , email: str, date_of_birth: str) ->
         db.session.rollback()
         raise e
 
+def change_password(user_id: int, old_password: str, new_password: str) -> None:
+    """Change the password for a user."""
+    user = getUserDetails(user_id)
+    if not user:
+        raise ValueError('User not found')
+
+    if not validate_password(user.password_hash, old_password):
+        raise ValueError('Old password is incorrect')
+
+    try:
+        hashed_password = hash_password(new_password)
+        user.password_hash = hashed_password.encode('utf-8')
+        db.session.commit()
+    except IntegrityError as e:
+        db.session.rollback()
+        raise e
+
 def add_jwt_token(response: Response, userID: int, long_expire: bool) -> None:
     """
     Function for generating a JWT token.
