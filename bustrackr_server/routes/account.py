@@ -1,11 +1,15 @@
 from sqlalchemy.exc import IntegrityError
-from flask import Blueprint, make_response, request
+from flask import Blueprint, Response, make_response, request
 from functools import wraps
 import orjson
 from bustrackr_server.config import Config
+from bustrackr_server.models import User
 from bustrackr_server.utils import orjson_default
 from bustrackr_server.services.authentication_service import (
     add_jwt_token,
+    get_latest_agreements,
+    get_latest_login,
+    get_latest_report,
     renew_jwt_token,
     validate_jwt_token,
     clear_jwt_token,
@@ -69,23 +73,15 @@ def authenticate_user():
         email = req['email'].lower()
         password = req['password'].lower()
         long_expire = req['long_expire']
+        ip_address = request.remote_addr
         
-        user = authenticate(email, password)
+        
+        user = authenticate(email, password, ip_address)
         
         if not user:
             return orjson.dumps({'status': 'error', 'message': 'Invalid email or password'}), 401
 
-        response = make_response(orjson.dumps({
-            'status': 'success',
-            'message': 'Login successful',
-            'userData': {
-                'id': user.id,
-                'username': user.username,
-                'email': user.email,
-                'date_of_birth': user.date_of_birth,
-                'registration_date': user.registration_date,
-            },
-        }, default=orjson_default))
+        response = generate_userdata_response(user, "Login successfull")
 
         add_jwt_token(response, user.id, long_expire)
 
@@ -151,9 +147,10 @@ def register_user():
         password = req['password']
         date_of_birth = req['date_of_birth']
         long_expire = req['long_expire']
+        ip_address = request.remote_addr
         
         try:
-            user = create_user(username, email, password, date_of_birth)
+            user = create_user(username, email, password, date_of_birth, ip_address)
         except ValueError as e:
             if 'Username is already taken' in str(e):
                 return orjson.dumps({'status': 'error', 'message': 'Username is already taken'}), 400
@@ -163,18 +160,8 @@ def register_user():
                 return orjson.dumps({'status': 'error', 'message': 'Internal server error'}), 500
         except:
             return orjson.dumps({'status': 'error', 'message': 'Internal server error'}), 500
-
-        response = make_response(orjson.dumps({
-            'status': 'success',
-            'message': 'Login successful',
-            'userData': {
-                'id': user.id,
-                'username': user.username,
-                'email': user.email,
-                'date_of_birth': user.date_of_birth,
-                'registration_date': user.registration_date,
-            },
-        }, default=orjson_default))
+        
+        response = generate_userdata_response(user, "Registration successful")
 
         # Add JWT token.
         add_jwt_token(response, user.id, long_expire)
@@ -196,17 +183,7 @@ def reauthenticate_user():
         if not user:
             return orjson.dumps({'status': 'error', 'message': 'Invalid user.'}), 401
 
-        response = make_response(orjson.dumps({
-            'status': 'success',
-            'message': 'Reauthentication successful',
-            'userData': {
-                'id': user.id,
-                'username': user.username,
-                'email': user.email,
-                'date_of_birth': user.date_of_birth,
-                'registration_date': user.registration_date,
-            },
-        }, default=orjson_default))
+        response = generate_userdata_response(user, "Reauthentication successful")
 
         # Renew authToken.
         renew_jwt_token(response, request)
@@ -214,8 +191,7 @@ def reauthenticate_user():
         return response, 200
     
     except KeyError as e:
-        raise e
-        #return orjson.dumps({'status': 'error', 'message': f'Missing required field: {str(e)}'}), 400
+        return orjson.dumps({'status': 'error', 'message': f'Missing required field: {str(e)}'}), 400
     except Exception as e:
         return orjson.dumps({'status': 'error', 'message': 'Internal server error'}), 500
 
@@ -417,3 +393,29 @@ def validate_request(req: Dict[str, Any], required_fields: Dict[str, Union[type,
         
         if convert_to_lowercase and isinstance(value, str):
             req[field] = value.lower()
+
+def generate_userdata_response(user: User, successMsg: str) -> Response:
+    agreements_dict = get_latest_agreements(user.id)
+    latest_login = get_latest_login(user.id)
+    latest_report = get_latest_report(user.id)
+
+    terms_of_service = agreements_dict.get('terms_of_service', None)
+    data_policy = agreements_dict.get('data_policy', None)
+
+    return make_response(orjson.dumps({
+        'status': 'success',
+        'message': successMsg,
+        'userData': {
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'date_of_birth': user.date_of_birth,
+            'registration_date': user.registration_date,
+            'latest_login': {'ip': latest_login.ip, 'timestamp': latest_login.time}
+        },
+        'agreements': {
+            'terms_of_service': {'ip': terms_of_service.ip, 'timestamp': terms_of_service.time,} if terms_of_service else None,
+            'data_policy': {'ip': data_policy.ip, 'timestamp': data_policy.time} if data_policy else None
+        },
+        'latest_report': {'ip': latest_report.ip, 'timestamp': latest_report.time,} if latest_report else None,
+    }, default=orjson_default))

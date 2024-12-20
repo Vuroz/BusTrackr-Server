@@ -455,4 +455,3 @@ class AgreementLog(db.Model):
     time = db.Column(TIMESTAMP, name='time', nullable=False, primary_key=True, default=db.func.current_timestamp())
     type = db.Column(agreement_enum, name='type', nullable=False)
     ip = db.Column(VARCHAR(15), name='ip', nullable=False)
-    agreement_hash = db.Column(CHAR(128), name='agreement_hash', nullable=False)

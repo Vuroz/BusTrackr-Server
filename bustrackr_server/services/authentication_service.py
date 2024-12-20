@@ -1,7 +1,7 @@
 from sqlalchemy import select, and_
 from sqlalchemy.exc import IntegrityError
 from bustrackr_server import db
-from bustrackr_server.models import User
+from bustrackr_server.models import AgreementLog, LoginLog, ReportLog, User, agreement_enum
 from bustrackr_server import Config
 from argon2 import PasswordHasher
 import jwt
@@ -22,11 +22,12 @@ def validate_password(stored_hash: str, password: str) -> bool:
     except Exception:
         return False
 
-def authenticate(email: str, password: str) -> User:
+def authenticate(email: str, password: str, ip: str) -> User:
     """Authenticate user details with database."""
     user_query = select(User).where(User.email == email)
     user = db.session.execute(user_query).scalars().first()
     if user and validate_password(user.password_hash, password):
+        log_login(user.id, ip)
         return user
     return None
 
@@ -35,7 +36,7 @@ def getUserDetails(id: int) -> User:
     user_query = select(User).where(User.id == id)
     return db.session.execute(user_query).scalars().first()
 
-def create_user(username: str, email: str, password: str, date_of_birth: str) -> User:
+def create_user(username: str, email: str, password: str, date_of_birth: str, ip: str) -> User:
     """Create a user in the database."""
     # Check if username or email already exists
     existing_user = User.query.filter((User.username == username) | (User.email == email)).first()
@@ -49,8 +50,68 @@ def create_user(username: str, email: str, password: str, date_of_birth: str) ->
         hashed_password = hash_password(password)
         new_user = User(username=username, email=email, password_hash=hashed_password.encode('utf-8'), date_of_birth=date_of_birth)
         db.session.add(new_user)
+        db.session.commit()        
+    except IntegrityError as e:
+        db.session.rollback()
+        raise e
+    
+    log_agreement(new_user.id, "terms_of_service", ip)
+    log_agreement(new_user.id, "data_policy", ip)
+    log_login(new_user.id, ip)
+    
+    return new_user
+    
+def log_agreement(user_id: int, agreement_type: str, ip: str) -> None:
+    """Log user agreement to the database."""
+    try:
+        new_log = AgreementLog(
+            userID=user_id,
+            type=agreement_type,
+            ip=ip,
+        )
+        db.session.add(new_log)
         db.session.commit()
-        return new_user
+    except IntegrityError as e:
+        db.session.rollback()
+        raise e
+    
+def get_latest_login(user_id: int) -> LoginLog:
+    """Get the latest login log for a user."""
+    login_query = select(LoginLog).where(LoginLog.userID == user_id).order_by(LoginLog.time.desc())
+    return db.session.execute(login_query).scalars().first()
+
+def get_latest_agreements(user_id: int) -> dict:
+    """Get the latest terms_of_service and data_policy agreement logs for a user."""
+    terms_query = select(AgreementLog).where(
+        and_(AgreementLog.userID == user_id, AgreementLog.type == "terms_of_service")
+    ).order_by(AgreementLog.time.desc()).limit(1)
+    
+    data_policy_query = select(AgreementLog).where(
+        and_(AgreementLog.userID == user_id, AgreementLog.type == "data_policy")
+    ).order_by(AgreementLog.time.desc()).limit(1)
+    
+    terms_log = db.session.execute(terms_query).scalars().first()
+    data_policy_log = db.session.execute(data_policy_query).scalars().first()
+    
+    return {
+        "terms_of_service": terms_log,
+        "data_policy": data_policy_log
+    }
+    
+def get_latest_report(user_id: int) -> ReportLog:
+    """Get the latest report log for a user."""
+    report_query = select(ReportLog).where(ReportLog.userID == user_id).order_by(ReportLog.generatedOn.desc())
+    return db.session.execute(report_query).scalars().first()
+    
+def log_login(user_id: int, ip: str) -> None:
+    """Log user login to the database."""
+    try:
+        new_log = LoginLog(
+            userID=user_id,
+            ip=ip,
+        )
+        db.session.add(new_log)
+        db.session.commit()
     except IntegrityError as e:
         db.session.rollback()
         raise e
